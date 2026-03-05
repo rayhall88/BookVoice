@@ -24,7 +24,7 @@
     *   **Capítulo Individual:** Guarda el capítulo actual como un archivo MP3, con el nombre del capítulo sugerido.
     *   **Libro Completo:** Exporta cada capítulo del libro como un archivo MP3 independiente, organizado en una carpeta con el nombre del libro (ej. `001_Capitulo_1.mp3`, `002_Capitulo_2.mp3`...).
 *   **Visualización de Imágenes:** Si un capítulo tiene ilustraciones, aparecerá un botón para abrir un visor y navegar por ellas.
-*   **Totalmente Offline (para lectura y narración básica):** Una vez cargado el libro, puedes leerlo o usar el TTS del sistema sin necesidad de internet. La exportación a MP3 requiere `ffmpeg`.
+*   **Totalmente Offline (para lectura y narración básica):** Una vez cargado el libro, puedes leerlo o usar el TTS del sistema sin necesidad de internet. La exportación a MP3 requiere [ffmpeg](https://www.ffmpeg.org).
 
 ### English
 *   **Load and Read EPUBs:** Open EPUB files and navigate through their content with an interactive table of contents.
@@ -39,7 +39,7 @@
     *   **Single Chapter:** Save the current chapter as an MP3 file, with the chapter name suggested.
     *   **Full Book:** Export each chapter as an independent MP3 file, organized in a folder named after the book (e.g., `001_Chapter_1.mp3`, `002_Chapter_2.mp3`...).
 *   **Image Viewer:** If a chapter contains illustrations, a button will appear to open a viewer and browse through them.
-*   **Fully Offline (for reading and basic narration):** Once the book is loaded, you can read or use the system TTS without an internet connection. MP3 export requires `ffmpeg`.
+*   **Fully Offline (for reading and basic narration):** Once the book is loaded, you can read or use the system TTS without an internet connection. MP3 export requires [ffmpeg](https://www.ffmpeg.org).
 
 ---
 
