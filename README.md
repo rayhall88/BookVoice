@@ -59,7 +59,7 @@
 ## 📦 Instalación / Installation
 
 ### Español
-*   Para los usuarios de Windows ya existe una compilación que se puede descargar desde el siguiente link: [BookVoice Reader para Windows](https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link)
+*   Para los usuarios de Windows ya existe una compilación que se puede descargar desde el siguiente link: [BookVoice Reader para Windows](https://drive.google.com/file/d/1YSmVOsTkLs2XZKGtUA4zmHDcauo30QsV/view?usp=drive_link)
 *   No necesita instalación, solo ejecutar el archivo `.exe` descargado.
 *   Para utilizar las opciones de exportar a MP3 las narraciones de capítulos o del documento/libro entero es necesario tener instalado [ffmpeg](https://www.ffmpeg.org) en el sistema o colocar el fichero `ffmpeg.exe` en la misma carpeta de BookVoice.
 
