@@ -5,7 +5,7 @@
 **BookVoice Reader** es una aplicación de escritorio construida con Python y Tkinter que transforma la lectura de libros electrónicos (EPUB) en una experiencia multimedia. Lee, escucha y sumérgete en tus historias favoritas con funciones de texto-a-voz, gestión de capítulos y exportación de audio.  
 **BookVoice Reader** is a desktop application built with Python and Tkinter that transforms reading EPUB e-books into a multimedia experience. Read, listen, and immerse yourself in your favorite stories with text-to-speech, chapter management, and audio export features.
 
-[Descargar BookVoice Reader para Windows / Download BookVoice Reader for Windows](https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link)
+[Descargar BookVoice Reader para Windows / Download BookVoice Reader for Windows](https://drive.google.com/file/d/1YSmVOsTkLs2XZKGtUA4zmHDcauo30QsV/view?usp=drive_link)
 
 ---
 
