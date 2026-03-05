@@ -64,6 +64,6 @@
 *   Para utilizar las opciones de exportar a MP3 las narraciones de capítulos o del documento/libro entero es necesario tener instalado [ffmpeg](https://www.ffmpeg.org) en el sistema o colocar el fichero `ffmpeg.exe` en la misma carpeta de BookVoice.
 
 ### English
-*   For Windows users, there is a pre-compiled version available for download at: [BookVoice Reader for Windows](https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link)
+*   For Windows users, there is a pre-compiled version available for download at: [BookVoice Reader for Windows](https://drive.google.com/file/d/1YSmVOsTkLs2XZKGtUA4zmHDcauo30QsV/view?usp=drive_link)
 *   No installation required; just run the downloaded `.exe` file.
 *   To use the MP3 export options (chapters or full book), you need to have [ffmpeg](https://www.ffmpeg.org) installed on your system or place the `ffmpeg.exe` file in the same folder as BookVoice.
