@@ -67,3 +67,8 @@
 *   For Windows users, there is a pre-compiled version available for download at: [BookVoice Reader for Windows](https://drive.google.com/file/d/1YSmVOsTkLs2XZKGtUA4zmHDcauo30QsV/view?usp=drive_link)
 *   No installation required; just run the downloaded `.exe` file.
 *   To use the MP3 export options (chapters or full book), you need to have [ffmpeg](https://www.ffmpeg.org) installed on your system or place the `ffmpeg.exe` file in the same folder as BookVoice.
+
+  ---
+  ## ❤️ Donar/donate
+  ### Apoya nuestro proyecto / Support our project
+  ![bc1qgcxkczwcl8gpfl2t9v5mjmnszyckgz2kew95nt](src/donar.png) 
