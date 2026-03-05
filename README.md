@@ -7,6 +7,8 @@
 
 [Descargar BookVoice Reader para Windows / Download BookVoice Reader for Windows](https://drive.google.com/file/d/1YSmVOsTkLs2XZKGtUA4zmHDcauo30QsV/view?usp=drive_link)
 
+Mail:rayhall8805@gmail.com
+Telegram:@ErinCuba
 ---
 
 ## ✨ Características Principales / Key Features
