@@ -2,7 +2,7 @@
 
 ![BookVoice Reader Logo](src/bookvoicer.ico) 
 
-**BookVoice Reader** es una aplicación de escritorio construida con Python y Tkinter que transforma la lectura de libros electrónicos (EPUB) en una experiencia multimedia. Lee, escucha y sumérgete en tus historias favoritas con funciones de texto-a-voz, gestión de capítulos y exportación de audio.
+**BookVoice Reader** es una aplicación de escritorio construida con Python y Tkinter que transforma la lectura de libros electrónicos (EPUB) en una experiencia multimedia. Lee, escucha y sumérgete en tus historias favoritas con funciones de texto-a-voz, gestión de capítulos y exportación de audio. Descargar [BookVoice Reader para Windows](https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link) 
 
 ### ✨ Características Principales
 
@@ -33,7 +33,6 @@
 
 ### 📦 Instalación
 
-* Para los usuarios de Windows ya existe una compilación que se puede descargar desde el siguiente link:
-  https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link
+* Para los usuarios de Windows ya existe una compilación que se puede descargar desde el siguiente link [BookVoice Reader para Windows](https://drive.google.com/file/d/16MgyF-CVsNwunGYyvLQoBQDk_4kfYJ0C/view?usp=drive_link)  
 * No necesita instalación solo ejecutar el archivo .exe descargado.
-* Para utilizar las opciones de exportar a MP3 las narraciones de capitulos o del documento/libro entero es necesario tener instalado ffmpeg (https://www.ffmpeg.org) en el sistema o el fichero ffmpeg.exe en la misma carpeta de BookVoice.
+* Para utilizar las opciones de exportar a MP3 las narraciones de capitulos o del documento/libro entero es necesario tener instalado [ffmpeg](https://www.ffmpeg.org) en el sistema o el fichero ffmpeg.exe en la misma carpeta de BookVoice.
