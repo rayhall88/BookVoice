@@ -13,6 +13,9 @@ from audio_exporter import merge_mp3_files, cleanup_temp_files
 from PIL import Image, ImageTk
 from system_tts import _check_ffmpeg
 import io
+import sqlite3
+from datetime import datetime
+import json
 
 
 # Configuración para asyncio en Windows
@@ -31,11 +34,29 @@ def resource_path(relative_path):
 class BookVoiceReader:
     def __init__(self, root):
         self.root = root
-        self.root.title("BookVoice Reader 3.1")
+        self.root.title("BookVoice Reader 3.3")
         self.root.iconbitmap(default=resource_path('bookvoicer.ico'))
+        self.root.minsize(800, 600)
         self.root.geometry("900x700")
+        # Protocolo de cierre
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.fv = 0
+        # Determinar carpeta de datos
+        # if sys.platform == 'win32':
+        #     data_dir = os.path.join(os.environ['APPDATA'], 'BookVoice')
+        # else:
+        #     data_dir = os.path.join(os.path.expanduser("~"), ".bookvoice")
+        data_dir = ".bookvoice"
+        os.makedirs(data_dir, exist_ok=True)
+        self.db_path = os.path.join(data_dir, 'bookmarks.db')
+        self.init_db()
 
         # Variables de estado
+        self.font_size = 11  # valor por defecto
+        self.min_font = 8
+        self.max_font = 20
+        self.config_file = os.path.join(os.path.dirname(self.db_path), 'config.json')  # o donde prefieras
+        self.load_font_size()  # cargar tamaño guardado
         self.current_book = None
         self.chapters = []                # lista de (titulo, contenido)
         self.current_chapter_index = 0
@@ -110,34 +131,40 @@ class BookVoiceReader:
 
     # ---------- Interfaz gráfica ----------
     def create_widgets(self):
-        # Panel izquierdo: índice
+        # Panel izquierdo: índice (sin cambios)
         left_frame = ttk.Frame(self.root, width=250)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
         left_frame.pack_propagate(False)
-
+    
         ttk.Label(left_frame, text="Índice" if self.idioma == "es" else "Index", font=('Arial', 10, 'bold')).pack(anchor=tk.W)
         self.toc_tree = ttk.Treeview(left_frame, show='tree')
         self.toc_tree.pack(fill=tk.BOTH, expand=True)
         self.toc_tree.bind('<<TreeviewSelect>>', self.on_toc_select)
-
-        # Panel central: contenido + controles
+    
+        # Panel central: contenido + controles con grid
         center_frame = ttk.Frame(self.root)
         center_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        # Título del capítulo
+    
+        # Configurar grid: 10 filas (0 a 9), la fila del área de texto (2) con peso 1
+        for i in range(10):
+            center_frame.grid_rowconfigure(i, weight=0)
+        center_frame.grid_rowconfigure(2, weight=1)  # área de texto
+        center_frame.columnconfigure(0, weight=1)    # única columna
+    
+        # Título del capítulo (fila 0)
         title_frame = ttk.Frame(center_frame)
-        title_frame.pack(fill=tk.X, pady=5)
-        
+        title_frame.grid(row=0, column=0, sticky='ew', pady=5)
+    
         self.chapter_title_var = tk.StringVar()
         ttk.Label(title_frame, textvariable=self.chapter_title_var, font=('Arial', 12, 'bold')).pack(side=tk.LEFT)
-        
+    
         self.image_button = ttk.Button(title_frame, text="📷 Ver ilustraciones" if self.idioma == "es" else "📷 See illustrations", command=self.show_images, state=tk.DISABLED)
         self.image_button.pack(side=tk.RIGHT, padx=5)
-
-        # Área de texto con scroll
+    
+        # Área de texto con scroll (fila 2)
         text_frame = ttk.Frame(center_frame)
-        text_frame.pack(fill=tk.BOTH, expand=True)
-
+        text_frame.grid(row=2, column=0, sticky='nsew', pady=5)
+    
         self.text_area = tk.Text(text_frame, wrap=tk.WORD, font=('Arial', 11), padx=20, pady=20)
         scroll_y = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=self.text_area.yview)
         self.text_area.configure(yscrollcommand=scroll_y.set)
@@ -145,11 +172,11 @@ class BookVoiceReader:
         self.text_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.text_area.tag_configure("highlight", background="yellow", foreground="black")
         self.text_area.configure(state='disabled')
-
-        # Barra de navegación entre capítulos
+    
+        # Barra de navegación entre capítulos (fila 3)
         nav_frame = ttk.Frame(center_frame)
-        nav_frame.pack(fill=tk.X, pady=5)
-
+        nav_frame.grid(row=3, column=0, sticky='ew', pady=5)
+    
         self.prev_button = ttk.Button(nav_frame, text="◀ Anterior"  if self.idioma == "es" else "◀ Previous", command=self.prev_chapter)
         self.prev_button.pack(side=tk.LEFT, padx=2)
         self.next_button = ttk.Button(nav_frame, text="Siguiente ▶"  if self.idioma == "es" else "Next ▶", command=self.next_chapter)
@@ -160,39 +187,51 @@ class BookVoiceReader:
         self.total_chapters_label = ttk.Label(nav_frame, text="de 1")
         self.total_chapters_label.pack(side=tk.LEFT)
 
-        # Panel inferior: narración
-        ttk.Label(center_frame, text="Narración (edge-tts)"  if self.idioma == "es" else "Narrative (edge-tts)", font=('Arial', 10, 'bold')).pack(anchor=tk.W, pady=(10,0))
+        
+        self.font_up = ttk.Button(nav_frame, text="A+", width=3, command=self.increase_font)
+        self.font_up.pack(side=tk.RIGHT, padx=2)
+        self.font_down = ttk.Button(nav_frame, text="A-", width=3, command=self.decrease_font)
+        self.font_down.pack(side=tk.RIGHT, padx=2)
 
+        ttk.Label(nav_frame, text="Tamaño fuente:").pack(side=tk.RIGHT, padx=5)
+    
+        # Etiqueta Narración (fila 4)
+        ttk.Label(center_frame, text="Narración (edge-tts)"  if self.idioma == "es" else "Narrative (edge-tts)", font=('Arial', 10, 'bold')).grid(row=4, column=0, sticky='w', pady=(10,0))
+    
+        # Voz (fila 5)
         voice_frame = ttk.Frame(center_frame)
-        voice_frame.pack(fill=tk.X)
-
+        voice_frame.grid(row=5, column=0, sticky='ew', pady=5)
+    
         ttk.Label(voice_frame, text="Voz:" if self.idioma == "es" else "Voice:").pack(side=tk.LEFT)
         self.voice_combobox = ttk.Combobox(voice_frame, state='readonly', width=40)
         self.voice_combobox.pack(side=tk.LEFT, padx=5)
-
-        # Botones de narración
+    
+        # Botones de narración (fila 6)
         btn_frame = ttk.Frame(center_frame)
-        btn_frame.pack(fill=tk.X, pady=5)
-
+        btn_frame.grid(row=6, column=0, sticky='ew', pady=5)
+    
         self.play_button = ttk.Button(btn_frame, text="▶ Narrar capítulo"  if self.idioma == "es" else "▶ Narrate chapter", command=self.narrate_chapter)
         self.play_button.pack(side=tk.LEFT, padx=2)
         self.pause_button = ttk.Button(btn_frame, text="⏸️ Pausa"  if self.idioma == "es" else "⏸️ Pause", command=self.toggle_pause, state=tk.DISABLED)
         self.pause_button.pack(side=tk.LEFT, padx=2)
         self.stop_button = ttk.Button(btn_frame, text="■ Detener"  if self.idioma == "es" else "■ Stop", command=self.stop_narration, state=tk.DISABLED)
         self.stop_button.pack(side=tk.LEFT, padx=2)
+    
+        # Checkbutton (fila 7)
         auto_next_check = ttk.Checkbutton(
             center_frame, 
             text="Reproducir siguiente capítulo automáticamente"  if self.idioma == "es" else "Play next chapter automatically",
             variable=self.auto_next
         )
-        auto_next_check.pack(anchor=tk.W, pady=2)        
-
-        # Barra de progreso
+        auto_next_check.grid(row=7, column=0, sticky='w', pady=2)
+    
+        # Barra de progreso (fila 8)
         self.progress = ttk.Progressbar(center_frame, mode='determinate')
-        self.progress.pack(fill=tk.X, pady=5)
-
+        self.progress.grid(row=8, column=0, sticky='ew', pady=5)
+    
+        # Etiqueta de estado (fila 9)
         self.status_label = ttk.Label(center_frame, text="Listo" if self.idioma == "es" else "Ready")
-        self.status_label.pack(anchor=tk.W)
+        self.status_label.grid(row=9, column=0, sticky='w')
 
     # ---------- Carga de voces ----------
     def load_voices(self):
@@ -314,6 +353,7 @@ class BookVoiceReader:
             self.display_chapter(0)
             self.load_voices()
             self.status_label.config(text="EPUB cargado correctamente" if self.idioma == "es" else "EPUB loaded successfully" )
+            self.check_bookmark()
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -487,6 +527,7 @@ class BookVoiceReader:
         self.chapter_spinbox.config(state=tk.DISABLED)
         self.prev_button.config(state=tk.DISABLED)
         self.next_button.config(state=tk.DISABLED)
+        self.fv = 0
 
     
         # Si no hay capítulos o voz, mostrar error
@@ -505,7 +546,9 @@ class BookVoiceReader:
             self.stop_narration()
     
         _, chapter_text = self.chapters[self.current_chapter_index]
-        fragments, indices = self.split_text(chapter_text,max_chars=500)
+        self.fv  = self.get_first_visible_index()
+        print(self.fv)
+        fragments, indices = self.split_text(chapter_text[self.fv:],max_chars=500)
         self.fragment_indices = indices
     
         # Estado inicial de la nueva narración
@@ -569,11 +612,18 @@ class BookVoiceReader:
         temp.close()
     
         if voice_type == 'edge-tts':
-            async def _gen():
-                comm = edge_tts.Communicate(text, voice_code)
-                await comm.save(temp.name)
-            asyncio.run(_gen())
-            return temp.name
+            try:
+                async def _gen():
+                    comm = edge_tts.Communicate(text, voice_code)
+                    await comm.save(temp.name)
+                asyncio.run(_gen())
+                return temp.name
+            except:
+                txt1 = "Servicio TTS Online" if self.idioma == "es" else "TTS Online Service" 
+                txt2 = "Revise su conexion a Internet e intente nuevamente" if self.idioma == "es" else "Check your internet connection and try again."
+                messagebox.showerror(txt1,txt2)
+                self.stop_narration()
+                
         else:
             # TTS del sistema: puede devolver .mp3 o .wav
             real_path = system_text_to_mp3(text, voice_code, temp.name)
@@ -588,7 +638,7 @@ class BookVoiceReader:
         self.playback_queue.append((file, idx))   # guardamos tupla
         # Si es el primer archivo y aún no hemos iniciado la reproducción, la iniciamos
         if idx == 0 and self.playing:
-            self.status_label.config(text="Reproduciendo...")
+            self.status_label.config(text="Reproduciendo..." if self.idioma == "es" else "Playing...")
             self.root.after(100, self.playback_loop)
 
     def playback_loop(self):
@@ -600,7 +650,7 @@ class BookVoiceReader:
             self.current_playback_file = file
             self.current_fragment_index = idx
             # Resaltar el fragmento en el texto
-            self.highlight_fragment(idx)
+            self.highlight_fragment(idx,self.fv)
             pygame.mixer.init()
             pygame.mixer.music.load(file)
             pygame.mixer.music.play()
@@ -670,6 +720,7 @@ class BookVoiceReader:
         self.status_label.config(text="Narración detenida")
 
     def narration_finished(self):
+        self.fv = 0
         #self.toc_tree.config(state=tk.NORMAL)
         self.chapter_spinbox.config(state='readonly')  # o NORMAL según corresponda
         self.prev_button.config(state=tk.NORMAL)
@@ -914,12 +965,14 @@ class BookVoiceReader:
             self.paused = True
             self.status_label.config(text="Pausado"   if self.idioma == "es" else "Paused")
             
-    def highlight_fragment(self, idx):
+    def highlight_fragment(self, idx,fv):
         """Resalta el fragmento con índice idx en el text_area."""
         # Quitar resaltado anterior
         self.text_area.tag_remove("highlight", "1.0", tk.END)
         if 0 <= idx < len(self.fragment_indices):
             start, end = self.fragment_indices[idx]
+            start = start + fv
+            end = end + fv
             # Convertir posiciones de caracteres a índices de Tkinter
             # Tkinter usa "line.char", así que necesitamos mapear. Como el texto está completo,
             # podemos usar la función index que convierte posición de caracter a "line.char".
@@ -991,7 +1044,7 @@ class BookVoiceReader:
     def show_about(self):
         """Muestra información sobre la aplicación y el autor."""
         about_textES = (
-            "BookVoice Reader versión 3.0\n\n"
+            "BookVoice Reader versión 3.3\n\n"
             "Creador: Ray R. Hall Mejias\n"
             "Correo: rayhall8805@gmail.com\n"  # Reemplaza con el correo real
             "Telegram: @ErinCuba\n\n"  # Reemplaza con el usuario real
@@ -1169,7 +1222,162 @@ class BookVoiceReader:
     
         # Botón de cerrar
         ttk.Button(main_frame, text="Cerrar", command=top.destroy).pack(pady=10)
-
+        
+    def save_bookmark(self,show=True):
+        if not self.chapters:
+            #messagebox.showinfo("Info", "No hay ningún libro cargado.")
+            return
+    
+        # Obtener la posición del cursor en caracteres desde el inicio del capítulo
+        #cursor_pos = self.text_area.index("insert")
+        #char_index = self.text_area.count("1.0", cursor_pos, "chars")[0]
+        char_index = self.get_first_visible_index()
+        
+    
+        # Guardar en BD: capítulo y char_index
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        try:
+            c.execute('''
+                INSERT OR REPLACE INTO bookmarks 
+                (book_title, book_author, num_chapters, chapter_index, char_index)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (
+                self.current_book['title'],
+                self.current_book['author'],
+                len(self.chapters),
+                self.current_chapter_index,
+                char_index
+            ))
+            conn.commit()
+            if show:
+                txt1 = "Marcador guardado" if self.idioma == "es" else "Bookmark Saved"
+                txt2 = f"Posición guardada: Capítulo {self.current_chapter_index+1}, carácter {char_index}" if self.idioma == "es" else f"Bookmark saved: Chapter {self.current_chapter_index+1}, char {char_index}"
+                messagebox.showinfo(txt1,txt2)
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar el marcador: {e}")
+        finally:
+            conn.close()
+            
+    def check_bookmark(self):
+        if not self.current_book:
+            return
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute('''
+            SELECT chapter_index, char_index FROM bookmarks
+            WHERE book_title = ? AND book_author = ? AND num_chapters = ?
+            ORDER BY created_at DESC LIMIT 1
+        ''', (self.current_book['title'], self.current_book['author'], len(self.chapters)))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            chap_idx, char_idx = row
+            #print(char_idx)
+            txt1 = "Marcador encontrado" if self.idioma == "es" else "Bookmark found"
+            txt2 = f"¿Deseas ir a la posición guardada en \nCapítulo: {self.chapters[chap_idx][0]} ?" if self.idioma == "es" else f"Do you want to go to the saved position in\nChapter: {self.chapters[chap_idx][0]} ?"
+            if messagebox.askyesno(txt1,txt2):
+                self.current_chapter_index = chap_idx
+                self.display_chapter(chap_idx)
+                # Posicionar el cursor y hacer scroll al carácter guardado
+                self.text_area.mark_set("insert", f"1.0 + {char_idx} chars")
+                self.text_area.see("insert")
+                self.text_area.focus_set()
+                
+    def init_db(self):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS bookmarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_title TEXT NOT NULL,
+            book_author TEXT NOT NULL,
+            num_chapters INTEGER NOT NULL,
+            chapter_index INTEGER NOT NULL,
+            char_index INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(book_title, book_author, num_chapters, chapter_index, char_index)
+        )
+        ''')
+        conn.commit()
+        conn.close()
+        
+    def get_first_visible_index(self):
+        bd = int(self.text_area.cget('borderwidth'))
+        ht = int(self.text_area.cget('highlightthickness'))
+        padx = int(self.text_area.cget('padx'))
+        pady = int(self.text_area.cget('pady'))
+    
+        # Desplazamiento total
+        x_offset = bd + ht + padx
+        y_offset = bd + ht + pady
+    
+        # Obtener el índice como string (ej: "25.3")
+        index_str = self.text_area.index(f"@{x_offset+1},{y_offset+1}")
+        
+        # Convertir a posición absoluta (entero)
+        position = int(self.text_area.index(f"{index_str} - 1 char").split('.')[0]) * 10000 + \
+                   int(self.text_area.index(index_str).split('.')[1])
+        
+        # Alternativa más simple: usar count
+        lines, chars = map(int, index_str.split('.'))
+        total_chars_before = sum(len(self.text_area.get(f"{i}.0", f"{i}.end")) + 1 
+                                 for i in range(1, lines))
+        return total_chars_before + chars
+    
+    def on_closing(self):
+        if not self.chapters:
+            self.root.destroy()
+            return
+            
+        """Manejador del evento de cierre."""
+        txt1 = "Guardar Marcador"  if self.idioma == "es" else "Save Bookmark"
+        txt2 = "¿Quieres actualizar marcador antes de salir?"  if self.idioma == "es" else "Do you want to update the bookmark before leaving?"
+        respuesta = messagebox.askyesno(txt1,txt2)
+        if respuesta:      # Sí, guardar y luego cerrar
+                self.save_bookmark(show=False)
+                self.root.destroy()
+        else:    # No, descartar cambios y cerrar
+                self.root.destroy()
+      
+    def load_font_size(self):
+        """Carga el tamaño de fuente guardado en config.json."""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    self.font_size = config.get('font_size', 11)
+        except Exception as e:
+            print(f"Error cargando configuración: {e}")
+    
+    def save_font_size(self):
+        """Guarda el tamaño de fuente actual."""
+        try:
+            config = {}
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+            config['font_size'] = self.font_size
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f)
+        except Exception as e:
+            print(f"Error guardando configuración: {e}")
+            
+            
+    def increase_font(self):
+        if self.font_size < self.max_font:
+            self.font_size += 1
+            self.text_area.config(font=('Arial', self.font_size))
+            self.save_font_size()
+    
+    def decrease_font(self):
+        if self.font_size > self.min_font:
+            self.font_size -= 1
+            self.text_area.config(font=('Arial', self.font_size))
+            self.save_font_size()
+            
+            
+            
 if __name__ == "__main__":
     root = tk.Tk()
     app = BookVoiceReader(root)
